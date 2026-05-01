@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미사이든학원 플래시카드 학습장</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; }
+        body { background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; overscroll-behavior: none; overflow-x: hidden; }
+
+        .app-container { max-width: 800px; width: 100%; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+        .controls-header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .controls-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        select, .btn-size { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: white; }
+        .toggle-switch { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 14px; }
+        
+        .btn-size { background: #f8f9fa; cursor: pointer; }
+        .btn-size.active { background: #e0e7ff; border-color: #4f46e5; color: #4f46e5; font-weight: bold; }
+
+        .review-panel { display: flex; gap: 10px; align-items: center; background: #fff8e1; padding: 12px 15px; border-radius: 8px; border: 1px dashed #ffb300; margin-bottom: 20px; flex-wrap: wrap; }
+        .review-panel-title { font-size: 14px; color: #d84315; font-weight: bold; margin-right: 5px; }
+        .btn-review { border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; flex: 1; min-width: 120px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .btn-review.unknown { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+        .btn-review.confused { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+        .btn-review:active { transform: scale(0.95); }
+        .btn-review:hover { opacity: 0.8; }
+
+        .counter { text-align: center; color: #666; margin-bottom: 10px; font-size: 15px; font-weight: bold; }
+        
+        .scene { perspective: 1000px; width: 100%; height: 350px; margin-bottom: 20px; cursor: pointer; touch-action: none; position: relative; }
+        
+        .card-wrapper { width: 100%; height: 100%; transition: transform 0.3s cubic-bezier(0.4, 0.2, 0.2, 1), opacity 0.3s ease; }
+        
+        .fly-out-left { transform: translateX(-150%) rotate(-15deg); opacity: 0; }
+        .fly-out-right { transform: translateX(150%) rotate(15deg); opacity: 0; }
+        .fly-out-up { transform: translateY(-150%) rotate(10deg); opacity: 0; }
+        .fly-out-down { transform: translateY(150%) rotate(-10deg); opacity: 0; }
+
+        .card { width: 100%; height: 100%; position: relative; transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; pointer-events: none; }
+        .card.is-flipped { transform: rotateY(180deg); }
+        
+        .card__face { 
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            background: #e3f2fd; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25), 0 5px 10px rgba(0,0,0,0.15); 
+            border: 2px solid #90caf9; 
+            padding: 20px; text-align: center; 
+        }
+        .card__face--back { 
+            transform: rotateY(180deg); 
+            background-color: #bbdefb; 
+            border: 2px solid #64b5f6; 
+        }
+
+        .word-text { font-weight: bold; margin-bottom: 20px; word-break: keep-all; line-height: 1.3; transition: font-size 0.2s; pointer-events: auto; user-select: none; color: #1a237e; }
+        .badge-category { background: white; color: #1976d2; padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; pointer-events: auto; border: 1px solid #1976d2; }
+
+        .word-text.font-small { font-size: 24px; }
+        .word-text.font-medium { font-size: 36px; }
+        .word-text.font-large { font-size: 48px; }
+        .word-text.font-xlarge { font-size: 64px; }
+        .word-text.font-xxlarge { font-size: 80px; }
+
+        .nav-buttons { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .btn-nav { background: #4285f4; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; flex: 1; max-width: 120px; transition: 0.2s; }
+        .btn-nav:hover { background: #3367d6; }
+
+        .eval-buttons { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .btn-eval { padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; flex: 1; max-width: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .btn-eval:active { transform: scale(0.95); }
+        .btn-eval.unknown { background: #ffebee; border: 1px solid #ef9a9a; color: #c62828; }
+        .btn-eval.confused { background: #fff8e1; border: 1px solid #ffe082; color: #f57f17; }
+        .btn-eval.known { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
+
+        .eval-count { font-size: 14px; font-weight: normal; margin-top: 4px; opacity: 0.85; }
+
+        .shortcuts { text-align: center; font-size: 13px; color: #888; border-top: 1px solid #eee; padding-top: 15px; margin-bottom: 20px; line-height: 1.6; }
+
+        .history-controls { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+        .history-toggle-btn { flex: 2; background: #607d8b; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; }
+        .history-toggle-btn:hover { background: #455a64; }
+        .history-download-btn { flex: 1; background: #2e7d32; color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; min-width: 150px; }
+        .history-download-btn:hover { background: #1b5e20; }
+        
+        .history-container { width: 100%; overflow-x: auto; max-height: 400px; border: 1px solid #ddd; border-radius: 6px; display: none; }
+        .history-table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; white-space: nowrap; }
+        .history-table th, .history-table td { border: 1px solid #ddd; padding: 10px; }
+        .history-table th { background-color: #4285f4; color: white; position: sticky; top: 0; font-weight: bold; z-index: 1; }
+        
+        .history-table tr.bg-unknown td { background-color: #ffebee; } 
+        .history-table tr.bg-confused td { background-color: #fff9c4; } 
+        .history-table tr.bg-known td { background-color: #e8f5e9; } 
+
+        /* 🔥 미사이든학원 저작권 푸터 디자인 */
+        .footer-copyright {
+            text-align: center;
+            font-size: 13px;
+            color: #888;
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 500px) {
+            .btn-nav, .btn-eval { padding: 8px 5px; font-size: 14px; }
+            .eval-count { font-size: 12px; }
+            .scene { height: 280px; }
+            .word-text.font-xxlarge { font-size: 50px; } 
+            .history-table { font-size: 12px; }
+            .review-panel { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div id="mainApp">
+        <div class="controls-header">
+            <div class="controls-group">
+                <select id="categorySelect" onchange="filterData()">
+                    <option value="all">모든 단원</option>
+                </select>
+                <select id="statusSelect" onchange="filterData()">
+                    <option value="all">전체 상태</option>
+                    <option value="비어있음">비어있음</option>
+                    <option value="모름">❌ 모름</option>
+                    <option value="헷갈림">⚠️ 헷갈림</option>
+                    <option value="알았음">✅ 알았음</option>
+                </select>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="qaToggle" checked onchange="updateCardDisplay()">
+                    <span>질문 ↔ 답변</span>
+                </label>
+            </div>
+            
+            <div class="controls-group">
+                <span style="font-size: 14px; color: #555; font-weight: bold;">크기:</span>
+                <button class="btn-size" onclick="setFontSize('small', this)">소</button>
+                <button class="btn-size" onclick="setFontSize('medium', this)">중</button>
+                <button class="btn-size active" onclick="setFontSize('large', this)">대</button>
+                <button class="btn-size" onclick="setFontSize('xlarge', this)">특대</button>
+                <button class="btn-size" onclick="setFontSize('xxlarge', this)">초대</button>
+            </div>
+        </div>
+
+        <div class="review-panel">
+            <span class="review-panel-title">💡 집중 복습:</span>
+            <button class="btn-review unknown" onclick="startReview('모름')">❌ 모른 단어 소환</button>
+            <button class="btn-review confused" onclick="startReview('헷갈림')">⚠️ 헷갈린 단어 소환</button>
+        </div>
+
+        <div id="counter" class="counter">0 / 0</div>
+
+        <div class="scene" id="cardScene">
+            <div class="card-wrapper" id="cardWrapper">
+                <div class="card" id="flashcard">
+                    <div class="card__face card__face--front">
+                        <div id="frontText" class="word-text font-large"></div>
+                        <div id="frontCategory" class="badge-category"></div>
+                    </div>
+                    <div class="card__face card__face--back">
+                        <div id="backText" class="word-text font-large"></div>
+                        <div id="backCategory" class="badge-category"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="btn-nav" onclick="handlePrevCard()">← 이전</button>
+            <button class="btn-nav" onclick="shuffleCards()" style="background-color: #555;">🔀 현재 목록 섞기</button>
+            <button class="btn-nav" onclick="handleNextCard()">다음 →</button>
+        </div>
+
+        <div class="eval-buttons">
+            <button class="btn-eval unknown" onclick="handleEvaluation('모름', 'left')">
+                <span>❌ 모름</span>
+                <span class="eval-count" id="count-unknown">0</span>
+            </button>
+            <button class="btn-eval confused" onclick="handleEvaluation('헷갈림', 'up')">
+                <span>⚠️ 헷갈림</span>
+                <span class="eval-count" id="count-confused">0</span>
+            </button>
+            <button class="btn-eval known" onclick="handleEvaluation('알았음', 'right')">
+                <span>✅ 알았음</span>
+                <span class="eval-count" id="count-known">0</span>
+            </button>
+        </div>
+
+        <div class="shortcuts">
+            <b>제스처 안내:</b> 👈 밀기(모름) | 👉 밀기(알았음) | 👆 위로 밀기(헷갈림) | 👇 아래로 밀기(이전 카드)<br>
+            <b>단축키:</b> 스페이스바/터치(뒤집기) | 화살표(이동) | 1, 2, 3(평가)
+        </div>
+
+        <div class="history-controls">
+            <button class="history-toggle-btn" onclick="toggleHistory()">📊 전체 학습 기록 표 보기 / 숨기기</button>
+            <button class="history-download-btn" onclick="downloadCSV()">📥 엑셀(CSV) 다운로드</button>
+        </div>
+        
+        <div id="historyContainer" class="history-container">
+            <table class="history-table">
+                <!-- 🔥 테이블 헤더 순서 변경 (단원이 가장 왼쪽으로) -->
+                <thead>
+                    <tr>
+                        <th>단원</th>
+                        <th>문제</th>
+                        <th>정답</th>
+                        <th>상태</th>
+                        <th>학습일시</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 🔥 미사이든학원 제공 및 저작권 명시 추가 -->
+        <div class="footer-copyright">
+            ⓒ 2026 미사이든학원 (이든관리형학습센터). All rights reserved.<br>
+            Provided by 황붕주 원장
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // 🔥 아래의 백틱(\`) 사이에 2000단어 CSV 텍스트를 복사해서 그대로 붙여넣어주세요!
+    const rawCSVData = `단어,뜻,단원
+provide,제공하다 ,01단원
+develop,개발하다,01단원
+cultural,"문화의, 문화적인",01단원
+inform,"알리다, 통지하다",01단원
+social,"사회의, 사교적인",01단원
+improve,"향상시키다, 향상하다",01단원
+individual,"개인, 개인의, 개인적인",01단원
+require,"필요로 하다, 요구하다",01단원
+volunteer,"자원봉사, 자원하다",01단원
+behave,행동하다,01단원
+amount,"총액, 총계가 ~이 되다",01단원
+relationship,관계,01단원
+employ,고용하다,01단원
+attitude,"태도, 입장",01단원
+research,"연구, 연구하다",01단원
+audience,"청중, 관객",01단원
+challenge,"도전, 난제, 도전하다",01단원
+influence,"영향, 영향을 미치는 것, 영향을 끼치다",01단원
+material,"자료, 재료, 물질",01단원
+opportunity,기회,01단원
+environment,환경,01단원
+expense,"비용, 지출",01단원
+local,"지방의, 지역의, 장소의",01단원
+involve,포함하다. 관련되다,01단원
+stress,"스트레스 강조, 강조하다, 압력을 주다",01단원
+therefore,"그러므로, 그 결과",01단원
+contain,"함유하다, 포함하다, 억제하다",01단원
+average,"평균, 평균의, 평균~이다",01단원
+ride,"타다, 타기, 타고 가기",01단원
+encourage,"촉구하다, 격려하다",01단원
+determine,"결정하다, 결심하다",01단원
+international,"국제의, 국제적인",01단원
+consume,"소비하다, 먹다",01단원
+impress,"깊은 인상을 주다, 감동시키다",01단원
+object,"물체, 목표, 반대하다",01단원
+available,"이용 가능한, 쓸모 있는",01단원
+positive,"긍정적인, 확신하는",01단원
+recognize,"인지하다, 인정하다",01단원
+commodity,"상품, 물품",01단원
+comfort,"편안하게 하다, 위로하다, 편안, 위로",01단원
+emotion,감정 ,02단원
+amaze,놀라게 하다,02단원
+reduce,"줄이다, 낮추다",02단원
+discover,발견하다,02단원
+decide,"결심하다, 결정하다",02단원
+benefit,"이익, 이익이 되다",02단원
+affect,"영향을 미치다, ~인 체 하다",02단원
+level,"수준, 수평의, 평평하게 하다",02단원
+chemistry,"화학, 교감",02단원
+immediate,"즉각적인, 가까이에 있는",02단원
+thus,"그러므로, 따라서",02단원
+proper,"적절한, 알맞은",02단원
+performance,"공연, 성적, 성과",02단원
+essence,"본질, 정수",02단원
+economic,"경제의, 경제학의",02단원
+cell,"세포, 작은 방, 독방",02단원
+focus,"초점, 초점을 맞추다, 집중하다",02단원
+issue,"화제, 문제, 발행, 발행하다",02단원
+participate,참여하다. 참가하다,02단원
+demand,"요구하다, 수요",02단원
+occur,일어나다. 발생하다,02단원
+complex,"복잡한, 복합체",02단원
+define,"정의하다. 한계 짓다, 한정하다",02단원
+proud,자랑스러워하는,02단원
+aware,"인지하는, 알고 있는",02단원
+contact,"접촉, 접촉하다",02단원
+profession,"전문직, 직종",02단원
+detail,"세부적인 것, 상술하다",02단원
+approach,"접근하다, 접근, 접근법",02단원
+career,"직업, 경력",02단원
+package,"꾸러미, 포장, 포장하다",02단원
+disappear,사라지다,02단원
+novel,"소설, 참신한",02단원
+secure,"안전한, 안전하게 하다",02단원
+function,"기능, 기능하다",02단원
+despite,~에도 불구하고,02단원
+background,"배경, 배경 지식, 이유",02단원
+solution,"해결, 해결책, 용액",02단원
+generate,"일으키다, 발생시키다",02단원
+eventually,결국,02단원
+`;
+    // ⬆️ 붙여넣기는 여기까지만! 
+
+    let allWords = [];
+    let currentList = [];
+    let currentIndex = 0;
+    let isFlipped = false;
+    let currentFontSize = 'large';
+    let isAnimating = false;
+
+    window.onload = function() {
+        processCSVText(rawCSVData);
+        initSwipeGesture();
+    };
+
+    function processCSVText(text) {
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+        if (lines.length === 0) return;
+
+        const delimiter = lines[0].includes('\t') ? '\t' : ',';
+        const categories = new Set();
+        
+        let startIndex = 0;
+        if (lines[0].includes('단어') || lines[0].includes('문제') || lines[0].includes('provide')) {
+            if (!lines[0].includes('provide')) startIndex = 1; 
+        }
+
+        for (let i = startIndex; i < lines.length; i++) {
+            const row = parseCSVRow(lines[i], delimiter);
+            if (row.length >= 2) {
+                const question = row[0] ? row[0].trim() : '';
+                const answer = row[1] ? row[1].trim() : '';
+                const category = (row[2] && row[2].trim() !== '') ? row[2].trim() : '기본분류';
+                
+                if (question || answer) {
+                    allWords.push({
+                        id: i,
+                        question: question,
+                        answer: answer,
+                        category: category,
+                        status: '비어있음',
+                        studyDate: '' 
+                    });
+                    categories.add(category);
+                }
+            }
+        }
+
+        const catSelect = document.getElementById('categorySelect');
+        catSelect.innerHTML = '<option value="all">모든 단원</option>';
+        Array.from(categories).sort().forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            catSelect.appendChild(opt);
+        });
+
+        filterData();
+    }
+
+    function parseCSVRow(str, delimiter) {
+        const result = [];
+        let curVal = '';
+        let inQuotes = false;
+        for (let i = 0; i < str.length; i++) {
+            const char = str[i];
+            if (char === '"' && str[i+1] === '"') {
+                curVal += '"';
+                i++;
+            } else if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === delimiter && !inQuotes) {
+                result.push(curVal);
+                curVal = '';
+            } else {
+                curVal += char;
+            }
+        }
+        result.push(curVal);
+        return result;
+    }
+
+    function filterData() {
+        const cat = document.getElementById('categorySelect').value;
+        const stat = document.getElementById('statusSelect').value;
+
+        currentList = allWords.filter(word => {
+            const matchCat = (cat === 'all') || (word.category === cat);
+            const matchStat = (stat === 'all') || (word.status === stat);
+            return matchCat && matchStat;
+        });
+
+        currentIndex = 0;
+        resetFlip();
+        updateCardDisplay();
+        updateCounts(); 
+        renderHistoryTable(); 
+    }
+
+    function startReview(targetStatus) {
+        const count = allWords.filter(word => word.status === targetStatus).length;
+        if (count === 0) {
+            alert(`현재 '${targetStatus}' 상태인 단어가 없습니다! \n먼저 학습을 진행하며 상태를 체크해주세요. 🎉`);
+            return;
+        }
+
+        document.getElementById('categorySelect').value = 'all';
+        document.getElementById('statusSelect').value = targetStatus;
+        
+        filterData();   
+        
+        for (let i = currentList.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [currentList[i], currentList[j]] = [currentList[j], currentList[i]];
+        }
+        updateCardDisplay();
+        renderHistoryTable();
+        
+        alert(`총 ${count}개의 '${targetStatus}' 단어를 복습합니다!\n순서가 무작위로 섞였습니다.`);
+    }
+
+    function updateCounts() {
+        let unknownCount = 0;
+        let confusedCount = 0;
+        let knownCount = 0;
+
+        currentList.forEach(word => {
+            if (word.status === '모름') unknownCount++;
+            else if (word.status === '헷갈림') confusedCount++;
+            else if (word.status === '알았음') knownCount++;
+        });
+
+        document.getElementById('count-unknown').innerText = unknownCount;
+        document.getElementById('count-confused').innerText = confusedCount;
+        document.getElementById('count-known').innerText = knownCount;
+    }
+
+    function updateCardDisplay() {
+        const counter = document.getElementById('counter');
+        const frontText = document.getElementById('frontText');
+        const backText = document.getElementById('backText');
+        const frontCategory = document.getElementById('frontCategory');
+        const backCategory = document.getElementById('backCategory');
+
+        if (currentList.length === 0) {
+            counter.innerText = '0 / 0';
+            frontText.innerText = '조건에 맞는 단어가 없습니다.';
+            backText.innerText = '조건을 변경해주세요.';
+            frontCategory.innerText = '-';
+            backCategory.innerText = '-';
+            return;
+        }
+
+        counter.innerText = `${currentIndex + 1} / ${currentList.length}`;
+        const word = currentList[currentIndex];
+        const qToA = document.getElementById('qaToggle').checked;
+        
+        if (qToA) {
+            frontText.innerText = word.question;
+            backText.innerText = word.answer;
+        } else {
+            frontText.innerText = word.answer;
+            backText.innerText = word.question;
+        }
+
+        frontText.className = `word-text font-${currentFontSize}`;
+        backText.className = `word-text font-${currentFontSize}`;
+        
+        frontCategory.innerText = word.category;
+        backCategory.innerText = word.category;
+    }
+
+    function setFontSize(size, btnElement) {
+        currentFontSize = size;
+        document.querySelectorAll('.btn-size').forEach(btn => btn.classList.remove('active'));
+        if(btnElement) btnElement.classList.add('active');
+        updateCardDisplay();
+    }
+
+    function flipCard() {
+        if (currentList.length === 0 || isAnimating) return;
+        isFlipped = !isFlipped;
+        document.getElementById('flashcard').classList.toggle('is-flipped', isFlipped);
+    }
+
+    function resetFlip() {
+        isFlipped = false;
+        document.getElementById('flashcard').classList.remove('is-flipped');
+    }
+
+    function handleEvaluation(status, direction) {
+        if (currentList.length === 0 || isAnimating) return;
+        isAnimating = true;
+
+        const now = new Date();
+        const dateString = now.getFullYear() + '.' + (now.getMonth() + 1) + '.' + now.getDate();
+        currentList[currentIndex].status = status;
+        currentList[currentIndex].studyDate = dateString;
+        
+        updateCounts();
+        renderHistoryTable(); 
+
+        const wrapper = document.getElementById('cardWrapper');
+        wrapper.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.2, 0.2, 1), opacity 0.3s ease';
+        
+        if (direction === 'left') wrapper.classList.add('fly-out-left');
+        else if (direction === 'right') wrapper.classList.add('fly-out-right');
+        else if (direction === 'up') wrapper.classList.add('fly-out-up');
+        else wrapper.classList.add('fly-out-left'); 
+
+        setTimeout(() => {
+            if (currentIndex < currentList.length - 1) {
+                currentIndex++;
+                resetFlip();
+                updateCardDisplay();
+                
+                wrapper.style.transition = 'none';
+                wrapper.className = 'card-wrapper'; 
+                wrapper.style.opacity = '0';
+                wrapper.style.transform = 'scale(0.8)';
+                
+                void wrapper.offsetWidth; 
+                
+                wrapper.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease';
+                wrapper.style.opacity = '1';
+                wrapper.style.transform = 'scale(1)';
+                
+                setTimeout(() => { 
+                    isAnimating = false; 
+                    wrapper.style.transform = ''; 
+                }, 300);
+            } else {
+                wrapper.style.transition = 'none';
+                wrapper.className = 'card-wrapper';
+                isAnimating = false;
+                alert('현재 목록의 마지막 단어입니다!');
+            }
+        }, 300);
+    }
+
+    function handleNextCard() {
+        if (currentList.length === 0 || isAnimating || currentIndex >= currentList.length - 1) return;
+        isAnimating = true;
+        const wrapper = document.getElementById('cardWrapper');
+        
+        wrapper.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.2, 0.2, 1), opacity 0.3s ease';
+        wrapper.classList.add('fly-out-left');
+        
+        setTimeout(() => {
+            currentIndex++;
+            resetFlip();
+            updateCardDisplay();
+            
+            wrapper.style.transition = 'none';
+            wrapper.className = 'card-wrapper';
+            wrapper.style.opacity = '0';
+            wrapper.style.transform = 'scale(0.8)';
+            
+            void wrapper.offsetWidth; 
+            
+            wrapper.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease';
+            wrapper.style.opacity = '1';
+            wrapper.style.transform = 'scale(1)';
+            
+            setTimeout(() => { isAnimating = false; wrapper.style.transform = ''; }, 300);
+        }, 300); 
+    }
+
+    function handlePrevCard() {
+        if (currentList.length === 0 || isAnimating || currentIndex <= 0) return;
+        isAnimating = true;
+        const wrapper = document.getElementById('cardWrapper');
+        
+        wrapper.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.2, 0.2, 1), opacity 0.3s ease';
+        wrapper.classList.add('fly-out-down'); 
+        
+        setTimeout(() => {
+            currentIndex--;
+            resetFlip();
+            updateCardDisplay();
+            
+            wrapper.style.transition = 'none';
+            wrapper.className = 'card-wrapper';
+            wrapper.style.opacity = '0';
+            wrapper.style.transform = 'scale(1.2)'; 
+            
+            void wrapper.offsetWidth;
+            
+            wrapper.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease';
+            wrapper.style.opacity = '1';
+            wrapper.style.transform = 'scale(1)';
+            
+            setTimeout(() => { isAnimating = false; wrapper.style.transform = ''; }, 300);
+        }, 300);
+    }
+
+    function shuffleCards() {
+        if (currentList.length === 0 || isAnimating) return;
+        for (let i = currentList.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [currentList[i], currentList[j]] = [currentList[j], currentList[i]];
+        }
+        currentIndex = 0;
+        resetFlip();
+        updateCardDisplay();
+        renderHistoryTable(); 
+    }
+
+    function renderHistoryTable() {
+        const tbody = document.getElementById('historyTableBody');
+        tbody.innerHTML = '';
+        
+        currentList.forEach(word => {
+            const tr = document.createElement('tr');
+            
+            if (word.status === '모름') tr.className = 'bg-unknown';
+            else if (word.status === '헷갈림') tr.className = 'bg-confused';
+            else if (word.status === '알았음') tr.className = 'bg-known';
+
+            // 🔥 표에 렌더링될 때 단원을 가장 왼쪽으로 배치했습니다.
+            tr.innerHTML = `
+                <td>${word.category}</td>
+                <td style="text-align:left; font-weight:bold;">${word.question}</td>
+                <td style="text-align:left;">${word.answer}</td>
+                <td>${word.status}</td>
+                <td style="color:#555;">${word.studyDate}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function toggleHistory() {
+        const container = document.getElementById('historyContainer');
+        if (container.style.display === 'none' || container.style.display === '') {
+            container.style.display = 'block';
+            renderHistoryTable(); 
+        } else {
+            container.style.display = 'none';
+        }
+    }
+
+    function downloadCSV() {
+        // 🔥 다운로드되는 CSV 형식도 단원이 먼저 오도록 수정했습니다.
+        let csvContent = "\uFEFF단원,문제,정답,상태,학습일시\n";
+        
+        allWords.forEach(word => {
+            let c = `"${word.category}"`;
+            let q = `"${word.question.replace(/"/g, '""')}"`;
+            let a = `"${word.answer.replace(/"/g, '""')}"`;
+            let s = `"${word.status}"`;
+            let d = `"${word.studyDate}"`;
+            
+            csvContent += `${c},${q},${a},${s},${d}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        
+        const now = new Date();
+        const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+        link.setAttribute("download", `미사이든학원_학습기록_${dateStr}.csv`);
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function initSwipeGesture() {
+        const scene = document.getElementById('cardScene');
+        let startX = 0;
+        let startY = 0;
+
+        scene.addEventListener('pointerdown', (e) => {
+            if (isAnimating) return; 
+            startX = e.clientX;
+            startY = e.clientY;
+            scene.setPointerCapture(e.pointerId);
+        });
+
+        scene.addEventListener('pointerup', (e) => {
+            if (isAnimating) return;
+            const endX = e.clientX;
+            const endY = e.clientY;
+            
+            const diffX = endX - startX;
+            const diffY = endY - startY;
+
+            if (Math.abs(diffX) > 40 || Math.abs(diffY) > 40) {
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (diffX > 0) handleEvaluation('알았음', 'right'); 
+                    else handleEvaluation('모름', 'left'); 
+                } else {
+                    if (diffY < 0) handleEvaluation('헷갈림', 'up'); 
+                    else handlePrevCard(); 
+                }
+            } 
+            else if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
+                flipCard();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown') { 
+            e.preventDefault(); 
+            flipCard(); 
+        }
+        else if (e.code === 'ArrowLeft') { handlePrevCard(); }
+        else if (e.code === 'ArrowRight') { handleNextCard(); }
+        else if (e.key === '1') { handleEvaluation('모름', 'left'); }
+        else if (e.key === '2') { handleEvaluation('헷갈림', 'up'); }
+        else if (e.key === '3') { handleEvaluation('알았음', 'right'); }
+        else if (e.key.toLowerCase() === 's') { shuffleCards(); }
+    });
+</script>
+</body>
+</html>
